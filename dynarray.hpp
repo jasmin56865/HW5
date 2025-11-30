@@ -3,32 +3,42 @@
 
 #include <cstddef>
 #include <stdexcept>
-
+#include <algorithm>
+#include <iostream>
 
 class Dynarray {
+public:
+    // Type alias members
+    using size_type = std::size_t;
+    using value_type = int;
+    using pointer = int*;
+    using reference = int&;
+    using const_pointer = const int*;
+    using const_reference = const int&;
+
 private:
-    int* data;
-    std::size_t length;
+    pointer data;
+    size_type length;
 
 public:
     Dynarray() : data(nullptr), length(0) {}
     
-    explicit Dynarray(std::size_t n) : data(n >= 1 ? new int[n]() : nullptr), length(n) {}
+    explicit Dynarray(size_type n) : data(n > 0 ? new value_type[n]() : nullptr), length(n) {}
     
-    Dynarray(std::size_t n, int x) : data(n >= 1 ? new int[n] : nullptr), length(n) {
-        for (std::size_t i = 0; i < length; ++i) {
+    Dynarray(size_type n, const value_type& x) : data(n > 0 ? new value_type[n] : nullptr), length(n) {
+        for (size_type i = 0; i < length; ++i) {
             data[i] = x;
         }
     }
     
-    Dynarray(const int* begin, const int* end) : data(( end - begin > 0) ? new int[end - begin] : nullptr), length(begin <= end ? end - begin : 0) {
-        for (std::size_t i = 0; i < length; ++i) {
+    Dynarray(const_pointer begin, const_pointer end) : data((end - begin > 0) ? new value_type[end - begin] : nullptr), length(begin <= end ? end - begin : 0) {
+        for (size_type i = 0; i < length; ++i) {
             data[i] = begin[i];
         }
     }
     
-    Dynarray(const Dynarray& other) : data(other.length > 0 ? new int[other.length] : nullptr), length(other.length) {
-        for (std::size_t i = 0; i < length; ++i) {
+    Dynarray(const Dynarray& other) : data(other.length > 0 ? new value_type[other.length] : nullptr), length(other.length) {
+        for (size_type i = 0; i < length; ++i) {
             data[i] = other.data[i];
         }
     }
@@ -46,11 +56,11 @@ public:
         if (this == &other) {
             return *this;
         }
-        int* new_data = nullptr;
+        pointer new_data = nullptr;
         if (other.length > 0) {
-            new_data = new int[other.length]; 
+            new_data = new value_type[other.length];
         }
-        for (std::size_t i = 0; i < other.length; ++i) {
+        for (size_type i = 0; i < other.length; ++i) {
             new_data[i] = other.data[i];
         }
         delete[] data;
@@ -70,7 +80,7 @@ public:
         return *this;
     }
     
-    std::size_t size() const {
+    size_type size() const {
         return length;
     }
     
@@ -78,19 +88,71 @@ public:
         return length == 0;
     }
     
-    int& at(std::size_t n) {
+    reference at(size_type n) {
         if (n >= length) {
             throw std::out_of_range{"Dynarray index out of range!"};
         }
         return data[n];
     }
     
-    const int& at(std::size_t n) const {
+    const_reference at(size_type n) const {
         if (n >= length) {
             throw std::out_of_range{"Dynarray index out of range!"};
         }
         return data[n];
     }
+    
+    // Subscript operator (no bounds checking)
+    reference operator[](size_type n) {
+        return data[n];
+    }
+    
+    const_reference operator[](size_type n) const {
+        return data[n];
+    }
+    
+    // Friend declarations for relational operators
+    friend bool operator==(const Dynarray& lhs, const Dynarray& rhs);
+    friend bool operator<(const Dynarray& lhs, const Dynarray& rhs);
 };
 
-#endif 
+// Relational operators (using standard library algorithms)
+bool operator==(const Dynarray& lhs, const Dynarray& rhs) {
+    return std::equal(lhs.data, lhs.data + lhs.size(), rhs.data, rhs.data + rhs.size());
+}
+
+bool operator!=(const Dynarray& lhs, const Dynarray& rhs) {
+    return !(lhs == rhs);
+}
+
+bool operator<(const Dynarray& lhs, const Dynarray& rhs) {
+    return std::lexicographical_compare(lhs.data, lhs.data + lhs.size(),
+                                       rhs.data, rhs.data + rhs.size());
+}
+
+bool operator<=(const Dynarray& lhs, const Dynarray& rhs) {
+    return !(rhs < lhs);
+}
+
+bool operator>(const Dynarray& lhs, const Dynarray& rhs) {
+    return rhs < lhs;
+}
+
+bool operator>=(const Dynarray& lhs, const Dynarray& rhs) {
+    return !(lhs < rhs);
+}
+
+// Output operator
+std::ostream& operator<<(std::ostream& os, const Dynarray& arr) {
+    os << '[';
+    if (!arr.empty()) {
+        for (Dynarray::size_type i = 0; i + 1 < arr.size(); ++i) {
+            os << arr[i] << ", ";
+        }
+        os << arr[arr.size() - 1];
+    }
+    os << ']';
+    return os;
+}
+
+#endif
